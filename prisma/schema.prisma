@@ -1,0 +1,139 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  runs Run[]
+
+  @@map("users")
+}
+
+model Workflow {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  version     Int
+  nodes       Json     // Array of WorkflowNode
+  edges       Json     // Array of WorkflowEdge
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  runs Run[]
+
+  @@unique([name, version])
+  @@map("workflows")
+}
+
+model Run {
+  id              String     @id @default(auto()) @map("_id") @db.ObjectId
+  workflowId      String     @db.ObjectId
+  workflowVersion Int
+  status          RunStatus  @default(PENDING)
+  input           Json
+  output          Json?
+  startedAt       DateTime   @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  triggeredBy     String     @db.ObjectId
+
+  workflow Workflow @relation(fields: [workflowId], references: [id])
+  user     User     @relation(fields: [triggeredBy], references: [id])
+  tasks    Task[]
+
+  @@map("runs")
+}
+
+model Task {
+  id              String     @id @default(auto()) @map("_id") @db.ObjectId
+  runId           String     @db.ObjectId
+  workflowId      String     @db.ObjectId
+  nodeId          String
+  status          TaskStatus @default(PENDING)
+  input           Json
+  output          Json?
+  error           String?
+  retryCount      Int        @default(0)
+  maxRetries      Int        @default(3)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  idempotencyKey  String     @unique
+
+  run Run @relation(fields: [runId], references: [id])
+
+  @@map("tasks")
+}
+
+model TaskLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  taskId    String   @db.ObjectId
+  runId     String   @db.ObjectId
+  level     LogLevel
+  message   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@map("task_logs")
+}
+
+model DeadLetterQueue {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  runId           String   @db.ObjectId
+  workflowId      String   @db.ObjectId
+  nodeId          String
+  input           Json
+  error           String
+  retryCount      Int
+  maxRetries      Int
+  createdAt       DateTime @default(now())
+  processedAt     DateTime?
+
+  @@map("dead_letter_queue")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum RunStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELED
+}
+
+enum TaskStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELED
+  RETRY
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+  DEBUG
+}
