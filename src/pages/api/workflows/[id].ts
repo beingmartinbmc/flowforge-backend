@@ -52,20 +52,90 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       res.status(200).json({ workflow: updatedWorkflow });
     } else if (req.method === 'DELETE') {
+      const { force = false, deleteRuns = false } = req.query;
+      
       const workflow = await prisma.workflow.findUnique({
         where: { id },
+        include: {
+          runs: {
+            include: {
+              tasks: true,
+              _count: {
+                select: { tasks: true }
+              }
+            }
+          },
+          _count: {
+            select: { runs: true }
+          }
+        }
       });
 
       if (!workflow) {
         return res.status(404).json({ error: 'Workflow not found' });
       }
 
-      await prisma.workflow.update({
-        where: { id },
-        data: { isActive: false },
-      });
+      // Check if workflow has runs
+      if (workflow._count.runs > 0 && !force) {
+        return res.status(400).json({ 
+          error: 'Workflow has runs and cannot be deleted. Use force=true to delete anyway.',
+          runsCount: workflow._count.runs
+        });
+      }
 
-      res.status(200).json({ message: 'Workflow deleted successfully' });
+      if (force && deleteRuns) {
+        // Delete all related data: tasks, runs, then workflow
+        console.log(`Force deleting workflow ${id} with all runs`);
+        
+        // Delete all tasks for all runs
+        for (const run of workflow.runs) {
+          await prisma.task.deleteMany({
+            where: { runId: run.id }
+          });
+          
+          // Delete task logs
+          await prisma.taskLog.deleteMany({
+            where: { runId: run.id }
+          });
+        }
+        
+        // Delete all runs
+        await prisma.run.deleteMany({
+          where: { workflowId: id }
+        });
+        
+        // Delete the workflow
+        await prisma.workflow.delete({
+          where: { id }
+        });
+        
+        res.status(200).json({ 
+          message: 'Workflow and all related data deleted successfully',
+          deletedRuns: workflow._count.runs,
+          deletedTasks: workflow.runs.reduce((sum, run) => sum + run._count.tasks, 0)
+        });
+      } else if (force) {
+        // Just delete the workflow, keep runs
+        await prisma.workflow.delete({
+          where: { id }
+        });
+        
+        res.status(200).json({ 
+          message: 'Workflow deleted successfully (runs preserved)',
+          preservedRuns: workflow._count.runs
+        });
+      } else {
+        // Soft delete (set isActive to false)
+        await prisma.workflow.update({
+          where: { id },
+          data: { isActive: false },
+        });
+        
+        res.status(200).json({ 
+          message: 'Workflow deactivated successfully',
+          runsCount: workflow._count.runs
+        });
+      }
     } else {
       res.status(405).json({ error: 'Method not allowed' });
     }

@@ -9,7 +9,7 @@
   "crons": [
     {
       "path": "/api/cron/process-tasks",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 12 * * *"
     }
   ],
   "env": {
