@@ -2,10 +2,16 @@
   "version": 2,
   "framework": "nextjs",
   "functions": {
-    "src/pages/api/**/*.ts": {
-      "maxDuration": 30
+    "src/pages/api/cron/process-tasks.ts": {
+      "maxDuration": 300
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/process-tasks",
+      "schedule": "*/30 * * * *"
+    }
+  ],
   "env": {
     "NODE_ENV": "production"
   }
