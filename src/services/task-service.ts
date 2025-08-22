@@ -53,8 +53,9 @@ export class TaskService {
         maxRetries: task.maxRetries,
       };
 
-      // Execute the task with node configuration
-      const result: TaskResult = await handler.execute(node?.config || {}, context);
+      // Execute the task with node configuration and input data
+      const inputData = { ...node?.config, ...task.input };
+      const result: TaskResult = await handler.execute(inputData, context);
 
       if (result.success) {
         // Task completed successfully
@@ -191,6 +192,10 @@ export class TaskService {
       });
 
       if (allDependenciesCompleted) {
+        // Get output from the completed dependency task
+        const completedTask = run.tasks?.find((task: any) => task.nodeId === completedNodeId);
+        const taskInput = completedTask?.output || run.input;
+
         // Create task for this node
         const task = await prisma.task.create({
           data: {
@@ -198,7 +203,7 @@ export class TaskService {
             workflowId: run.workflowId,
             nodeId,
             status: 'PENDING',
-            input: run.input as any,
+            input: taskInput as any,
             idempotencyKey: `${runId}-${nodeId}`,
           },
         });

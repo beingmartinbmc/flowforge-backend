@@ -14,19 +14,27 @@ export class EchoTaskHandler implements TaskHandler {
     const message = config.message || 'Echo task executed';
     const level = config.level || 'info';
 
+    // Create a comprehensive log message that includes both config and input data
+    let logMessage = `[${level.toUpperCase()}] ${message}`;
+    
+    // If there's input data from previous tasks, include it
+    if (Object.keys(input).length > 0 && !input.config) {
+      logMessage += `\nData from previous task: ${JSON.stringify(input, null, 2)}`;
+    }
+
     // Log the message based on level
     switch (level) {
       case 'info':
-        console.log(`[INFO] ${message}`);
+        console.log(logMessage);
         break;
       case 'warn':
-        console.warn(`[WARN] ${message}`);
+        console.warn(logMessage);
         break;
       case 'error':
-        console.error(`[ERROR] ${message}`);
+        console.error(logMessage);
         break;
       case 'debug':
-        console.debug(`[DEBUG] ${message}`);
+        console.debug(logMessage);
         break;
     }
 
@@ -36,6 +44,7 @@ export class EchoTaskHandler implements TaskHandler {
         message,
         level,
         timestamp: new Date().toISOString(),
+        inputData: Object.keys(input).length > 0 && !input.config ? input : undefined,
       },
     };
   }
