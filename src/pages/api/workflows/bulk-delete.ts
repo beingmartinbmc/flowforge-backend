@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/lib/db';
+import { redis, QUEUE_NAMES, STREAM_NAMES } from '@/lib/redis';
 import { requireAuth } from '@/lib/auth';
 import { withCors } from '@/lib/cors';
 
@@ -66,6 +67,34 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           if (force && deleteRuns) {
             // Delete all related data: tasks, runs, then workflow
             console.log(`Force deleting workflow ${workflowId} with all runs`);
+            
+            // Clean up Redis data for this workflow
+            try {
+              // Remove workflow-related keys from Redis
+              const workflowKeys = await redis.keys(`workflow:${workflowId}:*`);
+              if (workflowKeys.length > 0) {
+                await redis.del(...workflowKeys);
+              }
+              
+              // Remove run-related keys from Redis
+              for (const run of workflow.runs) {
+                const runKeys = await redis.keys(`run:${run.id}:*`);
+                if (runKeys.length > 0) {
+                  await redis.del(...runKeys);
+                }
+                
+                // Remove task-related keys from Redis
+                const taskKeys = await redis.keys(`task:*:run:${run.id}`);
+                if (taskKeys.length > 0) {
+                  await redis.del(...taskKeys);
+                }
+              }
+              
+              console.log(`Cleaned up Redis data for workflow ${workflowId}`);
+            } catch (redisError) {
+              console.error(`Redis cleanup error for workflow ${workflowId}:`, redisError);
+              // Continue with deletion even if Redis cleanup fails
+            }
             
             // Delete all tasks for all runs
             for (const run of workflow.runs) {
