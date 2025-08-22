@@ -39,14 +39,32 @@ export class HttpTaskHandler implements TaskHandler {
     const config: HttpTaskConfig = input.config || input;
     
     try {
+      // Validate URL
+      if (!config.url) {
+        return {
+          success: false,
+          error: 'URL is required for HTTP tasks',
+        };
+      }
+
+      // Clean and validate URL
+      const cleanedUrl = this.cleanUrl(config.url);
+      if (!this.isValidUrl(cleanedUrl)) {
+        return {
+          success: false,
+          error: `Invalid URL: ${config.url}`,
+        };
+      }
+
       const axiosConfig: AxiosRequestConfig = {
-        method: config.method,
-        url: config.url,
+        method: config.method || 'GET',
+        url: cleanedUrl,
         headers: config.headers || {},
         data: config.body,
         timeout: config.timeout || 30000,
       };
 
+      console.log(`Making HTTP request: ${config.method} ${cleanedUrl}`);
       const response: AxiosResponse = await axios(axiosConfig);
 
       return {
@@ -59,6 +77,8 @@ export class HttpTaskHandler implements TaskHandler {
         },
       };
     } catch (error: any) {
+      console.error(`HTTP request failed:`, error.message);
+      
       const shouldRetry = this.shouldRetry(error, config, context);
       const retryDelay = shouldRetry ? this.calculateRetryDelay(context.retryCount) : undefined;
 
@@ -68,6 +88,32 @@ export class HttpTaskHandler implements TaskHandler {
         shouldRetry,
         retryDelay,
       };
+    }
+  }
+
+  private cleanUrl(url: string): string {
+    // Remove any leading/trailing whitespace
+    let cleaned = url.trim();
+    
+    // Remove any leading @ symbol if present
+    if (cleaned.startsWith('@')) {
+      cleaned = cleaned.substring(1);
+    }
+    
+    // Ensure URL has protocol
+    if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
+      cleaned = `https://${cleaned}`;
+    }
+    
+    return cleaned;
+  }
+
+  private isValidUrl(url: string): boolean {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
     }
   }
 
