@@ -53,8 +53,8 @@ export class TaskService {
         maxRetries: task.maxRetries,
       };
 
-      // Execute the task
-      const result: TaskResult = await handler.execute(task.input as Record<string, any>, context);
+      // Execute the task with node configuration
+      const result: TaskResult = await handler.execute(node?.config || {}, context);
 
       if (result.success) {
         // Task completed successfully
