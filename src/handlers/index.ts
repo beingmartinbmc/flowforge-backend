@@ -1,5 +1,7 @@
 import { HttpTaskHandler } from './http-handler';
 import { EchoTaskHandler } from './echo-handler';
+import { StartTaskHandler } from './start-handler';
+import { EndTaskHandler } from './end-handler';
 import type { TaskHandler } from './http-handler';
 
 class TaskHandlerRegistry {
@@ -9,6 +11,8 @@ class TaskHandlerRegistry {
     // Register default handlers
     this.register(new HttpTaskHandler());
     this.register(new EchoTaskHandler());
+    this.register(new StartTaskHandler());
+    this.register(new EndTaskHandler());
   }
 
   register(handler: TaskHandler): void {
