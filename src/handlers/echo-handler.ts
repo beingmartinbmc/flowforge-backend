@@ -45,6 +45,7 @@ export class EchoTaskHandler implements TaskHandler {
         level,
         timestamp: new Date().toISOString(),
         inputData: Object.keys(input).length > 0 && !input.config ? input : undefined,
+        logMessage: logMessage, // Include the formatted log message for UI display
       },
     };
   }

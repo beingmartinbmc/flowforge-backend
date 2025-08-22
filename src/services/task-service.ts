@@ -79,6 +79,19 @@ export class TaskService {
           },
         });
 
+        // If the task has a logMessage, create an additional log entry for it
+        if (result.output?.logMessage) {
+          await prisma.taskLog.create({
+            data: {
+              taskId: task.id,
+              runId: task.runId,
+              level: result.output.level || 'INFO',
+              message: result.output.logMessage,
+              metadata: { type: 'handler_output' },
+            },
+          });
+        }
+
         // Schedule dependent tasks
         await this.scheduleDependentTasks(task.runId, task.nodeId);
       } else {
