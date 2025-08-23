@@ -67,6 +67,9 @@ export class HttpTaskHandler implements TaskHandler {
       console.log(`Making HTTP request: ${config.method} ${cleanedUrl}`);
       const response: AxiosResponse = await axios(axiosConfig);
 
+      // Create a log message with the API response data
+      const logMessage = `HTTP ${config.method} ${cleanedUrl} - Status: ${response.status} ${response.statusText}\nResponse Data: ${JSON.stringify(response.data, null, 2)}`;
+
       return {
         success: true,
         output: {
@@ -74,6 +77,7 @@ export class HttpTaskHandler implements TaskHandler {
           statusText: response.statusText,
           headers: response.headers,
           data: response.data,
+          logMessage: logMessage,
         },
       };
     } catch (error: any) {
