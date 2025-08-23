@@ -42,7 +42,7 @@ export class EchoTaskHandler implements TaskHandler {
       success: true,
       output: {
         message,
-        level,
+        level: level.toUpperCase(),
         timestamp: new Date().toISOString(),
         inputData: Object.keys(input).length > 0 && !input.config ? input : undefined,
         logMessage: logMessage, // Include the formatted log message for UI display

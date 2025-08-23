@@ -85,7 +85,7 @@ export class TaskService {
             data: {
               taskId: task.id,
               runId: task.runId,
-              level: result.output.level || 'INFO',
+              level: (result.output.level || 'INFO').toUpperCase() as any,
               message: result.output.logMessage,
               metadata: { type: 'handler_output' },
             },
